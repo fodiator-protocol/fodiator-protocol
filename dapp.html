@@ -352,9 +352,11 @@
                                         <div class="col-auto">
                                             <label class="col-form-label">You must mortgage <span
                                                     v-text="this.spendDaiWhenMintCash"></span> DAI and burn about
-                                                <span>xxx</span> Share to mint <span
-                                                    v-text="this.forms.mintCash"></span> Cash. (<span
-                                                    v-text="this.controller.quota.toFixed(0)"></span> mintable cash
+                                                <span>{{ this.spendShareWhenMintCash|qty3 }}</span> Share to mint
+                                                <span v-text="this.forms.mintCash"></span> Cash. (<a
+                                                    v-text="this.controller.quota.toFixed(0)"
+                                                    v-on:click="forms.mintCash = controller.quota.toFixed(0)"
+                                                    href="#0"></a> mintable cash
                                                 during current
                                                 cycle)</label>
                                         </div>

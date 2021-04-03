@@ -284,6 +284,15 @@ function initApp() {
                 let a = this.forms.mintCash;
                 return a / 2;
             },
+            spendShareWhenMintCash: function () {
+                let
+                    p = this.tokens.share.price,
+                    a = this.forms.mintCash;
+                if (isNaN(p)) {
+                    return NaN;
+                }
+                return a * 0.5 / p;
+            },
             swapCashDaiUrl: function () {
                 return this.network.swap + '/#/swap?inputCurrency=' + this.tokens.dai.address + '&outputCurrency=' + this.tokens.cash.address;
             },
@@ -389,12 +398,14 @@ function initApp() {
                 this.balances.cashDaiLp = NaN;
                 this.balances.stakedCashDaiLp = NaN;
                 this.balances.unclaimedCashDaiLpReward = NaN;
+                this.tokens.cashDaiLp.totalSupply = NaN;
             },
             async stakeShareDaiLp() {
                 await this._stake(this.balances.shareDaiLp, this.tokens.shareDaiLp, this.staking.shareDaiLpStaking);
                 this.balances.shareDaiLp = NaN;
                 this.balances.stakedShareDaiLp = NaN;
                 this.balances.unclaimedShareDaiLpReward = NaN;
+                this.tokens.shareDaiLp.totalSupply = NaN;
             },
             async unstakeCashDaiLp() {
                 await this._unstake(this.balances.stakedCashDaiLp, this.tokens.cashDaiLp, this.staking.cashDaiLpStaking);
@@ -534,8 +545,9 @@ function initApp() {
                 this.tokens.cash.oraclePrice = await getCashOraclePrice(priceOracle, this.tokens.cashDaiLp, this.tokens.cash, this.tokens.dai);
                 // get status and quota:
                 console.log('query status & quota...');
-                this.controller.status = await controller.status();
-                this.controller.quota = bn2number(await controller.quota());
+                let sq = await controller.status0();
+                this.controller.status = sq[0];
+                this.controller.quota = bn2number(sq[1]);
 
                 // update account balance:
                 this.balances.eth = await this.provider.getBalance(this.wallet.account);
