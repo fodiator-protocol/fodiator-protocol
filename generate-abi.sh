@@ -8,7 +8,7 @@ echo "// generate abi" > $TARGET
 
 echo "window.abis = {}" >> $TARGET
 
-for file in Controller PriceOracle StakingRewards IUniswapV2Pair IERC20
+for file in Controller PriceOracle StakingRewards IUniswapV2Pair IERC20 AAVEStrategy
 do
     echo "process $file.json..."
     echo -n "window.abis.$file = " >> $TARGET
