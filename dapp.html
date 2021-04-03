@@ -632,23 +632,15 @@
                             <h5>DAI Reserves</h5>
                             <div class="row">
                                 <div class="col text-muted">Total Reserves</div>
-                                <div class="col text-right">{{ this.tokens.dai.reserves|qty }} DAI</div>
+                                <div class="col text-right">{{ this.tokens.dai.reserves|qty3 }} DAI</div>
                             </div>
                             <div class="row">
                                 <div class="col text-muted">Total Investment</div>
-                                <div class="col text-right">{{ this.tokens.dai.invest|qty }} DAI</div>
-                            </div>
-                            <div class="row">
-                                <div class="col text-muted">Revenue on the Way</div>
-                                <div class="col text-right">{{ this.tokens.dai.revenue|qty }} DAI</div>
+                                <div class="col text-right">{{ this.tokens.dai.investment|qty3 }} aDAI</div>
                             </div>
                             <div class="row">
                                 <div class="col text-muted">Reserves for 1 FDC</div>
-                                <div class="col text-right">?</div>
-                            </div>
-                            <div class="row">
-                                <div class="col text-muted">Reserves for 1 FDS</div>
-                                <div class="col text-right">?</div>
+                                <div class="col text-right">{{ reservesPerCash|qty3 }} DAI</div>
                             </div>
                         </div>
                     </div>

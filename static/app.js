@@ -47,6 +47,7 @@ const daiToken = {
     symbol: 'DAI',
     decimals: 18,
     reserves: NaN, // update by timer
+    investment: NaN, // update by timer
 };
 
 const cashDaiLpToken = {
@@ -279,6 +280,16 @@ function initApp() {
                     t = t.sub(this.tokens.share.holdByShareDaiLpStaking);
                 }
                 return t;
+            },
+            reservesPerCash: function () {
+                let
+                    r = this.tokens.dai.reserves,
+                    i = this.tokens.dai.investment,
+                    t = this.tokens.cash.totalSupply;
+                if (isNaN(r) || isNaN(i) || isNaN(t)) {
+                    return NaN;
+                }
+                return (bn2number(r) + bn2number(i)) / bn2number(t);
             },
             spendDaiWhenMintCash: function () {
                 let a = this.forms.mintCash;
@@ -545,9 +556,8 @@ function initApp() {
                 this.tokens.cash.oraclePrice = await getCashOraclePrice(priceOracle, this.tokens.cashDaiLp, this.tokens.cash, this.tokens.dai);
                 // get status and quota:
                 console.log('query status & quota...');
-                let sq = await controller.status0();
-                this.controller.status = sq[0];
-                this.controller.quota = bn2number(sq[1]);
+                this.controller.status = (await controller.status0())[0];
+                this.controller.quota = bn2number(await controller.quota());
 
                 // update account balance:
                 this.balances.eth = await this.provider.getBalance(this.wallet.account);
@@ -570,6 +580,7 @@ function initApp() {
                 }
                 if (updateSlowerChange || isNaN(this.tokens.dai.reserves)) {
                     this.tokens.dai.reserves = await this.tokens.dai.contract.balanceOf(this.getContractAddress('Controller'));
+                    this.tokens.dai.investment = await this.loadContract('AAVEStrategy', this.getContractAddress('aaveStrategy')).balance(this.tokens.dai.address);
                 }
                 if (updateSlowerChange || isNaN(this.tokens.cash.price)) {
                     let pt = await getPriceAndTvlByLP(this.tokens.cashDaiLp, this.tokens.dai, 'cash');
