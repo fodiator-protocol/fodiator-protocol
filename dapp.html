@@ -1,0 +1,680 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1,shrink-to-fit=no" />
+    <title>Fodiator Cash</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.5.3/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.3.0/font/bootstrap-icons.css" />
+    <link rel="stylesheet" href="static/override.css" />
+    <link rel="stylesheet" href="static/app.css" />
+
+    <script>
+        function getParam(parameterName, defaultValue) {
+            let
+                result = defaultValue,
+                tmp = [],
+                items = location.search.substring(1).split('&');
+            for (let index = 0; index < items.length; index++) {
+                tmp = items[index].split('=');
+                if (tmp[0] === parameterName) {
+                    return decodeURIComponent(tmp[1]);
+                }
+            }
+            return result;
+        }
+
+        function initChainId() {
+            let theNetworks = {
+                'mainnet': ['0x1', 'https://etherscan.io', 'Uniswap', 'https://app.uniswap.org'],
+                'rinkeby': ['0x4', 'https://rinkeby.etherscan.io', 'Uniswap', 'https://app.uniswap.org'],
+                'kovan': ['0x2a', 'https://kovan.etherscan.io', 'Uniswap', 'https://app.uniswap.org'],
+            };
+            let network = getParam('network', 'mainnet');
+            if (!theNetworks[network]) {
+                network = 'mainnet';
+            }
+            window.NETWORK_NAME = network;
+            window.CHAIN_ID = theNetworks[network][0];
+            window.SCAN = theNetworks[network][1];
+            window.SWAP_NAME = theNetworks[network][2];
+            window.SWAP = theNetworks[network][3];
+            console.log('init network: ' + window.NETWORK_NAME + ', chainId: ' + window.CHAIN_ID);
+        }
+
+        initChainId();
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/ethers@5.0.32/dist/ethers.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.5.1/dist/jquery.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.12/dist/vue.js"></script>
+    <script src="static/abis.js"></script>
+    <script src="static/app.js"></script>
+</head>
+
+<body>
+    <div id="alertModal" class="modal">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="alert-title modal-title"></h5>
+                </div>
+                <div class="modal-body">
+                    <p class="alert-message"></p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="alert-close btn btn-outline-primary">OK</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="walletModal" class="modal">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="wallet-title">Waiting for Wallet</h5>
+                </div>
+                <div class="modal-body text-center">
+                    <div class="mt-4 mb-4">
+                        <!-- wallet-loading-icon -->
+                        <div class="wallet-loading-icon spinner-border text-secondary"
+                            style="width: 4rem; height: 4rem; animation-duration: 2s;">
+                            <span class="sr-only">Loading...</span>
+                        </div>
+                        <!-- wallet-success-icon -->
+                        <div class="wallet-success-icon text-success">
+                            <i class="bi bi-check-circle" style="font-size: 4rem;"></i>
+                        </div>
+                        <!-- wallet-error-icon -->
+                        <div class="wallet-error-icon text-danger">
+                            <i class="bi bi-exclamation-circle" style="font-size: 4rem;"></i>
+                        </div>
+                    </div>
+                    <div class="wallet-message mt-4">
+                        Waiting for wallet...
+                    </div>
+                    <div class="wallet-error mt-4 text-danger">
+                        Wallet error.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" disabled class="wallet-close btn btn-outline-primary">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="app">
+        <!-- popup modal for balances -->
+        <div id="balanceModal" class="modal">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Wallet Balances</h5>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mt-4xmb-4">
+                            <table class="table table-hover table-sm">
+                                <thead>
+                                    <tr>
+                                        <th style="border-top: none;">Asset</th>
+                                        <th style="border-top: none;" class="text-right">Balance</th>
+                                        <th style="border-top: none;"></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>ETH</td>
+                                        <td class="text-right">{{ this.balances.eth|qty3 }}</td>
+                                        <td></td>
+                                    </tr>
+                                    <tr>
+                                        <td>DAI</td>
+                                        <td class="text-right">{{ this.balances.dai|qty3 }}</td>
+                                        <td></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Cash</td>
+                                        <td class="text-right">{{ this.balances.cash|qty3 }}</td>
+                                        <td><a target="_blank" v-bind:href="this.swapCashDaiUrl">Buy Cash</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Share</td>
+                                        <td class="text-right">{{ this.balances.share|qty3 }}</td>
+                                        <td><a target="_blank" v-bind:href="this.swapShareDaiUrl">Buy Share</td>
+                                    </tr>
+                                    <tr>
+                                        <td>FDC-DAI-LP</td>
+                                        <td class="text-right">{{ this.balances.cashDaiLp|qty3 }}</td>
+                                        <td><a target="_blank" v-bind:href="this.addCashDaiLiqUrl">Get LP
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>FDS-DAI-LP</td>
+                                        <td class="text-right">{{ this.balances.shareDaiLp|qty3 }}</td>
+                                        <td><a target="_blank" v-bind:href="this.addShareDaiLiqUrl">Get LP
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>Staked FDC-DAI-LP</td>
+                                        <td class="text-right">{{ this.balances.stakedCashDaiLp|qty3 }}</td>
+                                        <td></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Unclaimed FDC-DAI-LP Reward</td>
+                                        <td class="text-right">{{ this.balances.unclaimedCashDaiLpReward|qty3 }}</td>
+                                        <td></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Staked FDS-DAI-LP</td>
+                                        <td class="text-right">{{ this.balances.stakedShareDaiLp|qty3 }}</td>
+                                        <td></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Unclaimed FDS-DAI-LP Reward</td>
+                                        <td class="text-right">{{ this.balances.unclaimedShareDaiLpReward|qty3 }}</td>
+                                        <td></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button data-dismiss="modal" type="button"
+                            class="wallet-close btn btn-outline-primary">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- navigation bar -->
+        <nav id="nav" class="navbar border-bottom navbar-expand-lg">
+            <div class="container">
+                <a class="navbar-brand mr-3 d-none d-md-block" href="/"><img src="static/logo.svg"
+                        style="height:32px" /> fodiator.cash</a>
+                <a class="navbar-brand mr-3 d-block d-md-none" href="/"><img src="static/logo.svg"
+                        style="height:32px" /></a>
+                <!-- wallet status -->
+                <form class="form-inline my-2 my-lg-0">
+                    <!-- not connect -->
+                    <button v-on:click="this.connectWallet"
+                        v-show="this.wallet.installed && this.wallet.account === null" type="button"
+                        class="btn btn-outline-primary my-2 my-sm-0"><i class="bi bi-wallet"></i>
+                        Connect</button>
+
+                    <!-- connected ok -->
+                    <button v-show="this.ready" type="button" onclick="$('#balanceModal').modal('show')"
+                        class="btn btn-outline-success my-2 my-sm-0"><i class="bi bi-wallet"></i>
+                        <span v-text="toAbbrAddress(this.wallet.account)"></span>
+                    </button>
+
+                    <!-- wrong chainId -->
+                    <span v-show="this.wallet.account && this.wallet.chainId !== this.network.chainId">
+                        Please switch to <span v-text="this.network.name"></span>
+                        <button type="button" class="btn btn-outline-warning my-2 my-sm-0"><i class="bi bi-wallet"></i>
+                            <span v-text="toAbbrAddress(this.wallet.account)"></span>
+                        </button></span>
+
+                    <!-- no metamask installed -->
+                    <span v-show="!this.wallet.installed">Please install <a target="_blank"
+                            href="https://metamask.io/">MetaMask</a> wallet</span>
+                </form>
+                <!-- // wallet status -->
+            </div>
+        </nav>
+        <div class="container">
+            <!-- introduction -->
+            <div class="row mt-4 mb-4">
+                <div class="col">
+                    <h3>Fodiator.Cash is a Decentralized Stablecoin with an Algorithmic Central Contract on Ethereum
+                    </h3>
+                    <p><a target="_blank" href="docs.html">Read the Docs</a></p>
+                </div>
+            </div>
+            <!-- // introduction -->
+
+            <div class="row mt-4 mb-4">
+                <div class="col d-md-none" style="flex-grow: 1;">
+                    <div style="width:100%">
+                        <h5>Cash Oracle Price: $ <span>{{ this.tokens.cash.oraclePrice|price }}</span></h5>
+                    </div>
+                </div>
+            </div>
+            <div class="row mt-4 mb-4">
+                <!-- cash oracle price -->
+                <div class="col d-none d-md-block" style="flex-grow: 0;">
+                    <div class="card">
+                        <span class="mt-4 mb-2 mr-4 text-right text-muted" style="font-size: 10px;">Oracle Price <i
+                                class="bi bi-info-circle" data-toggle="tooltip" data-placement="top"
+                                title="Time-Weighted-Average-Price of FDC in the last hour. Used to determine which status should be activates."></i></span>
+                        <h5 class="card-title mr-4 text-right">$ <span>{{ this.tokens.cash.oraclePrice|price }}</span>
+                        </h5>
+                        <div id="landscape" style="position: relative;">
+                            <div id="ruler">
+                                <div></div>
+                                <div></div>
+                                <div></div>
+                                <div></div>
+                                <div class="long"><span>1.5</span></div>
+                                <div></div>
+                                <div></div>
+                                <div></div>
+                                <div></div>
+                                <div class="long"><span>1.0</span></div>
+                                <div></div>
+                                <div></div>
+                                <div></div>
+                                <div></div>
+                                <div class="long"><span>0.5</span></div>
+                                <div></div>
+                                <div></div>
+                                <div></div>
+                                <div><span>0.1</span></div>
+                            </div>
+                            <div id="fish" v-bind:style="{bottom: (this.flyHeight-20)+ 'px'}">
+                                <img style="width:50px" src="static/fodiator.svg" />
+                            </div>
+                            <div class="sky">
+                            </div>
+                            <div class="seaSurface wave">
+                                <svg class="wave" xmlns="http://www.w3.org/2000/svg"
+                                    xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 24 150 28"
+                                    preserveAspectRatio="none">
+                                    <defs>
+                                        <path id="gentle-wave"
+                                            d="M-160 44c30 0 58-18 88-18s 58 18 88 18 58-18 88-18 58 18 88 18 v44h-352z" />
+                                    </defs>
+                                    <g class="parallax">
+                                        <use xlink:href="#gentle-wave" x="50" y="0" fill="#6bacdd" />
+                                        <use xlink:href="#gentle-wave" x="50" y="1" fill="#639dc7" />
+                                        <use xlink:href="#gentle-wave" x="50" y="2" fill="#537e9b" />
+                                    </g>
+                                </svg>
+                            </div>
+                            <div class="seaShallow"> </div>
+                            <div class="seaShallowToDeep wave">
+                                <svg class="wave" xmlns="http://www.w3.org/2000/svg"
+                                    xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 24 150 28"
+                                    preserveAspectRatio="none">
+                                    <defs>
+                                        <path id="gentle-wave"
+                                            d="M-160 44c30 0 58-18 88-18s 58 18 88 18 58-18 88-18 58 18 88 18 v44h-352z" />
+                                    </defs>
+                                    <g class="parallax">
+                                        <use xlink:href="#gentle-wave" x="50" y="0" fill="#3e6581" />
+                                        <use xlink:href="#gentle-wave" x="50" y="1" fill="#284c66" />
+                                        <use xlink:href="#gentle-wave" x="50" y="2" fill="#13334c" />
+                                    </g>
+                                </svg>
+                            </div>
+                            <div class="seaDeep"> </div>
+                            <div class="seaBottom"> </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col">
+                    <!-- status: no cash price, still fetching -->
+                    <div v-show="this.statusNoCashPrice" class="status-action">
+                        <div class="card">
+                            <div class="mt-4 ml-4 mr-4 mb-4">
+                                <h5 class="text-muted">Could not fetch fodiator cash price</h5>
+                                <p>The DApp currently cannot fetch fodiator cash price. Please check your wallet and
+                                    network status.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- status: above water -->
+                    <div v-show="this.statusAboveWater" class="status-action">
+                        <div class="card">
+                            <div class="mt-4 ml-4 mr-4 mb-4">
+                                <h5 class="text-success">Fodiator Cash Mint Activated</h5>
+                                <p>Stake Cash to get Share, then mint Cash for profit!</p>
+                                <form>
+                                    <div class="form-row">
+                                        <div class="col-auto">
+                                            <label class="col-form-label">Mint Cash:</label>
+                                        </div>
+                                        <div class="col-auto">
+                                            <input v-model.number="forms.mintCash" type="number"
+                                                class="form-control mb-2" min="0" v-bind:max="this.controller.quota"
+                                                style="width:120px;" value="0" />
+                                        </div>
+                                        <div class="col-auto">
+                                            <button v-on:click="mintCash" v-bind:disabled="forms.mintCash<=0"
+                                                type="button" class="btn btn-outline-success">Mint
+                                                Cash</button>
+                                        </div>
+                                    </div>
+                                    <div class="form-row">
+                                        <div class="col-auto">
+                                            <label class="col-form-label">You must mortgage <span
+                                                    v-text="this.spendDaiWhenMintCash"></span> DAI and burn about
+                                                <span>xxx</span> Share to mint <span
+                                                    v-text="this.forms.mintCash"></span> Cash. (<span
+                                                    v-text="this.controller.quota.toFixed(0)"></span> mintable cash
+                                                during current
+                                                cycle)</label>
+                                        </div>
+                                    </div>
+                                </form>
+                                <span class="text-danger" style="font-size: 0.8em;"><i
+                                        class="bi bi-exclamation-triangle"></i> PLEASE NOTE you can not get DAI back for
+                                    DAI is put into mortgage pool as "seigniorage". <a target="_blank"
+                                        href="https://github.io/">Learn
+                                        More</a></span>
+                            </div>
+                        </div>
+                    </div>
+                    <div v-show="this.statusStable" class="status-action">
+                        <div class="card">
+                            <div class="mt-4 ml-4 mr-4 mb-4">
+                                <h5 class="text-success">Fodiator Cash is Stable</h5>
+                                <p>Fodiator Cash is stable and no action required!</p>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- in the shallow -->
+                    <div v-show="this.statusInShallow" class="status-action">
+                        <div class="card">
+                            <div class="mt-4 ml-4 mr-4 mb-4">
+                                <h5 class="text-warning">Fodiator Cash Burn Activated</h5>
+                                <p>Burn 1 Cash and get 1 Share.</p>
+                                <form>
+                                    <div class="form-row">
+                                        <div class="col-auto">
+                                            <input type="number" class="form-control mb-2" style="width:120px;"
+                                                min="1" />
+                                        </div>
+                                        <div class="col-auto">
+                                            <button class="btn btn-outline-warning">Burn Cash</button>
+                                        </div>
+                                        <div class="col-auto">
+                                            <label class="col-form-label">and get ? Share</label>
+                                        </div>
+                                    </div>
+                                </form>
+                                <span style="font-size: 0.8em;">You have ? Cash and can burn <a href="#0">?</a>
+                                    FDC during the current cycle.</span>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- in the deep -->
+                    <div v-show="this.statusInDeep" class="status-action">
+                        <div class="card">
+                            <div class="mt-4 ml-4 mr-4 mb-4">
+                                <h5 class="text-warning">Fodiator Cash Redeem Activated</h5>
+                                <p>Redeem 1 DAI by burn 1 Cash and 1 Share.</p>
+                                <form>
+                                    <div class="form-row">
+                                        <div class="col-auto">
+                                            <input type="number" class="form-control mb-2" style="width:120px;"
+                                                min="1" />
+                                        </div>
+                                        <div class="col-auto">
+                                            <button class="btn btn-outline-warning">Burn Cash &amp; Share</button>
+                                        </div>
+                                        <div class="col-auto">
+                                            <label class="col-form-label">and get ? DAI</label>
+                                        </div>
+                                    </div>
+                                </form>
+                                <span style="font-size: 0.8em;">You have {{ this.balances.cash|qty }} Cash and {{
+                                    this.balances.share|qty }} Share. You can burn
+                                    <a href="#0">?</a>
+                                    FDC &amp; FDS during the current cycle.</span>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- liquidate -->
+                    <div v-show="this.statusDead" class="status-action">
+                        <div class="card">
+                            <div class="mt-4 ml-4 mr-4 mb-4">
+                                <h5 class="text-danger">Fodiator Share Liquidation Activated</h5>
+                                <p>Burn Share and get DAI.</p>
+                                <form>
+                                    <div class="form-row">
+                                        <div class="col-auto">
+                                            <input type="number" class="form-control mb-2" style="width:120px;"
+                                                min="1" />
+                                        </div>
+                                        <div class="col-auto">
+                                            <button class="btn btn-outline-warning">Burn Share</button>
+                                        </div>
+                                        <div class="col-auto">
+                                            <label class="col-form-label">and get ? DAI</label>
+                                        </div>
+                                    </div>
+                                </form>
+                                <span style="font-size: 0.8em;">You have {{ this.balances.share|qty }} Share. You can
+                                    burn all FDS and get DAI back.</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row mt-4">
+                <!-- cash card -->
+                <div class="col-12 col-lg-6 mb-4">
+                    <div class="card">
+                        <div class="mt-4 ml-4 mr-4 mb-4">
+                            <h3>
+                                <img class="large-icon" src="static/cash.svg">
+                                $ <span>{{ this.tokens.cash.price|price }}</span>
+                                <span class="text-muted" style="font-size: 0.75em">price</span>
+                            </h3>
+                            <h5>Fodiator Cash</h5>
+                            <div class="row">
+                                <div class="col text-muted">Total Supply</div>
+                                <div class="col text-right">{{ this.tokens.cash.totalSupply|qty }} FDC</div>
+                            </div>
+                            <div class="row">
+                                <div class="col text-muted">Circulating Supply</div>
+                                <div class="col text-right">{{ this.tokens.cash.totalSupply|qty }} FDC</div>
+                            </div>
+                            <div class="row">
+                                <div class="col text-muted">Your FDC</div>
+                                <div class="col text-right">{{ this.balances.cash|qty }} FDC</div>
+                            </div>
+                            <div class="row mt-4">
+                                <div class="col">
+                                    <a target="_blank" class="mb-2 btn btn-outline-success"
+                                        v-bind:href="this.swapCashDaiUrl">Buy FDC on {{ this.network.swapName }}</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- share card -->
+                <div class="col-12 col-lg-6 mb-4">
+                    <div class="card">
+                        <div class="mt-4 ml-4 mr-4 mb-4">
+                            <h3>
+                                <img class="large-icon" src="static/share.svg">
+                                $ <span>{{ this.tokens.share.price|price }}</span>
+                                <span class="text-muted" style="font-size: 0.75em">price</span>
+                            </h3>
+                            <h5>Fodiator Share</h5>
+                            <div class="row">
+                                <div class="col text-muted">Total Supply</div>
+                                <div class="col text-right">{{ this.tokens.share.totalSupply|qty }} FDS</div>
+                            </div>
+                            <div class="row">
+                                <div class="col text-muted">Circulating Supply</div>
+                                <div class="col text-right">{{ this.shareCirculatingSupply|qty }} FDS</div>
+                            </div>
+                            <div class="row">
+                                <div class="col text-muted">Your FDS</div>
+                                <div class="col text-right">{{ this.balances.share|qty }} FDS</div>
+                            </div>
+                            <div class="row mt-4">
+                                <div class="col">
+                                    <a target="_blank" class="mb-2 btn btn-outline-success"
+                                        v-bind:href="this.swapShareDaiUrl">Buy FDS on {{ this.network.swapName }}</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- cash-dai-pool -->
+                <div class="col-12 col-lg-6 mb-4">
+                    <div class="card">
+                        <div class="mt-4 ml-4 mr-4 mb-4">
+                            <h3>
+                                <img class="large-icon" src="static/cash.svg">
+                                <img class="large-icon" src="static/dai.svg">
+                                $ <span>{{ this.tokens.cashDaiLp.tvl|qty }}</span>
+                                <span class="text-muted" style="font-size: 0.75em">TVL</span>
+                            </h3>
+                            <h5>FDC-DAI Pool</h5>
+                            <div class="row">
+                                <div class="col text-muted">Your Available LP</div>
+                                <div class="col text-right">{{ this.balances.cashDaiLp|qty3 }} FDC-DAI-LP</div>
+                            </div>
+                            <div class="row">
+                                <div class="col text-muted">Your Staked LP</div>
+                                <div class="col text-right">{{ this.balances.stakedCashDaiLp|qty3 }} FDC-DAI-LP</div>
+                            </div>
+                            <div class="row">
+                                <div class="col text-muted">Your Percent of Staked</div>
+                                <div class="col text-right">{{ this.percent(this.balances.stakedCashDaiLp,
+                                    this.staking.cashDaiLpStaking.totalSupply)|qty3 }} %</div>
+                            </div>
+                            <div class="row">
+                                <div class="col text-muted">Your Unclaimed Profit</div>
+                                <div class="col text-right">{{ this.balances.unclaimedCashDaiLpReward|qty3 }} FDS</div>
+                            </div>
+                            <div class="row mt-2">
+                                <div class="col">
+                                    <a target="_blank" v-bind:href="this.addCashDaiLiqUrl">Get FDC-DAI-LP by Providing
+                                        Liquidity on Uniswap <i class="bi bi-box-arrow-up-right"></i></a>
+                                </div>
+                            </div>
+                            <div class="row mt-4">
+                                <div class="col">
+                                    <button v-on:click="stakeCashDaiLp"
+                                        v-bind:disabled="isZero(this.balances.cashDaiLp)" type="button"
+                                        class="mr-3 mb-2 btn btn-outline-success">Stake FDC-DAI-LP</button>
+                                    <button v-on:click="unstakeCashDaiLp"
+                                        v-bind:disabled="isZero(this.balances.stakedCashDaiLp)" type="button"
+                                        class="mr-3 mb-2 btn btn-outline-success">Unstake FDC-DAI-LP</button>
+                                    <button v-on:click="claimCashDaiLpReward"
+                                        v-bind:disabled="isZero(this.balances.unclaimedCashDaiLpReward)" type="button"
+                                        class="mb-2 btn btn-outline-success">Claim Profit</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- share-dai-pool -->
+                <div class="col-12 col-lg-6 mb-4">
+                    <div class="card">
+                        <div class="mt-4 ml-4 mr-4 mb-4">
+                            <h3>
+                                <img class="large-icon" src="static/share.svg">
+                                <img class="large-icon" src="static/dai.svg">
+                                $ <span>{{ this.tokens.shareDaiLp.tvl|qty }}</span>
+                                <span class="text-muted" style="font-size: 0.75em">TVL</span>
+                            </h3>
+                            <h5>FDS-DAI Pool</h5>
+                            <div class="row">
+                                <div class="col text-muted">Your Available LP</div>
+                                <div class="col text-right">{{ this.balances.shareDaiLp|qty3 }} FDS-DAI-LP</div>
+                            </div>
+                            <div v-if="this.staking.shareDaiLpStaking.address" class="row">
+                                <div class="col text-muted">Your Staked LP</div>
+                                <div class="col text-right">{{ this.balances.stakedShareDaiLp|qty3 }} FDS-DAI-LP</div>
+                            </div>
+                            <div v-if="this.staking.shareDaiLpStaking.address" class="row">
+                                <div class="col text-muted">Your Percent of Staked</div>
+                                <div class="col text-right">{{ this.percent(this.balances.stakedShareDaiLp,
+                                    this.staking.shareDaiLpStaking.totalSupply) }} %</div>
+                            </div>
+                            <div v-if="this.staking.shareDaiLpStaking.address" class="row">
+                                <div class="col text-muted">Your Unclaimed Profit</div>
+                                <div class="col text-right">{{ this.balances.unclaimedShareDaiLpReward|qty3 }} FDS</div>
+                            </div>
+                            <div class="row mt-2">
+                                <div class="col">
+                                    <a target="_blank" v-bind:href="this.addShareDaiLiqUrl">Get FDS-DAI-LP by Providing
+                                        Liquidity on Uniswap <i class="bi bi-box-arrow-up-right"></i></a>
+                                </div>
+                            </div>
+                            <div class="row mt-4">
+                                <div class="col">
+                                    <button v-if="this.staking.shareDaiLpStaking.address" v-on:click="stakeShareDaiLp"
+                                        v-bind:disabled="isZero(this.balances.shareDaiLp)" type="button"
+                                        class="mr-3 mb-2 btn btn-outline-success">Stake FDS-DAI-LP</button>
+                                    <button v-if="this.staking.shareDaiLpStaking.address" v-on:click="unstakeShareDaiLp"
+                                        v-bind:disabled="isZero(this.balances.stakedShareDaiLp)" type="button"
+                                        class="mr-3 mb-2 btn btn-outline-success">Unstake FDS-DAI-LP</button>
+                                    <button v-if="this.staking.shareDaiLpStaking.address"
+                                        v-on:click="claimShareDaiLpReward"
+                                        v-bind:disabled="isZero(this.balances.unclaimedShareDaiLpReward)" type="button"
+                                        class="mb-2 btn btn-outline-success"> Claim Profit</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- dai reserves -->
+                <div class="col-12 col-lg-6 mb-4">
+                    <div class="card">
+                        <div class="mt-4 ml-4 mr-4 mb-4">
+                            <h3><img class="large-icon" src="static/dai.svg"> $ <span>{{
+                                    this.tokens.dai.reserves|qty }}</span>
+                            </h3>
+                            <h5>DAI Reserves</h5>
+                            <div class="row">
+                                <div class="col text-muted">Total Reserves</div>
+                                <div class="col text-right">{{ this.tokens.dai.reserves|qty }} DAI</div>
+                            </div>
+                            <div class="row">
+                                <div class="col text-muted">Total Investment</div>
+                                <div class="col text-right">{{ this.tokens.dai.invest|qty }} DAI</div>
+                            </div>
+                            <div class="row">
+                                <div class="col text-muted">Revenue on the Way</div>
+                                <div class="col text-right">{{ this.tokens.dai.revenue|qty }} DAI</div>
+                            </div>
+                            <div class="row">
+                                <div class="col text-muted">Reserves for 1 FDC</div>
+                                <div class="col text-right">?</div>
+                            </div>
+                            <div class="row">
+                                <div class="col text-muted">Reserves for 1 FDS</div>
+                                <div class="col text-right">?</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="border-top mt-4 mb-4 pt-4">
+            <div class="container">
+                <div class="row">
+                    <div class="col-4">
+                        <a href="/" class="mr-2">fodiator.cash</a> copyright&copy;2021
+                    </div>
+                    <div class="col-4 text-center">
+                        Contract Address: <a
+                            v-bind:href="this.network.scan + '/address/' + this.getContractAddress('Controller')"
+                            v-text="toAbbrAddress(this.getContractAddress('Controller'))" class="mr-4"
+                            target="_blank"></a>
+                    </div>
+                    <div class="col-4 text-right">
+                        <a target="_blank" href="docs.html">Docs</a>
+                        <a class="ml-4" target="_blank" href="https://github.com/fodiator-protocol">GitHub</a>
+                        <a class="ml-4" target="_blank" href="https://twitter.com/FodiatorC">Twitter</a>
+                        <a class="ml-4" target="_blank" href="https://github.com">Telegram</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>
