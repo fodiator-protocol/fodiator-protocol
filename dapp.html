@@ -510,7 +510,7 @@
                             </div>
                             <div class="row">
                                 <div class="col text-muted">Your FDS</div>
-                                <div class="col text-right">{{ this.balances.share|qty }} FDS</div>
+                                <div class="col text-right">{{ this.balances.share|qty3 }} FDS</div>
                             </div>
                             <div class="row mt-4">
                                 <div class="col">
@@ -593,7 +593,7 @@
                             <div v-if="this.staking.shareDaiLpStaking.address" class="row">
                                 <div class="col text-muted">Your Percent of Staked</div>
                                 <div class="col text-right">{{ this.percent(this.balances.stakedShareDaiLp,
-                                    this.staking.shareDaiLpStaking.totalSupply) }} %</div>
+                                    this.staking.shareDaiLpStaking.totalSupply)|qty3 }} %</div>
                             </div>
                             <div v-if="this.staking.shareDaiLpStaking.address" class="row">
                                 <div class="col text-muted">Your Unclaimed Profit</div>

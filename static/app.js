@@ -559,9 +559,7 @@ function initApp() {
                 let status0 = await controller.status0();
                 this.controller.status = status0[0];
                 this.controller.quota = bn2number(status0[1]);
-                let tmpQuota = await controller.quota();
-                console.log('quota from status0() = ' + this.controller.quota);
-                console.log('quota from quota()   = ' + bn2number(tmpQuota));
+                console.log('quota from status0() = ' + this.controller.quota + ', quota = ' + this.controller.quota);
 
                 // update account balance:
                 this.balances.eth = await this.provider.getBalance(this.wallet.account);
