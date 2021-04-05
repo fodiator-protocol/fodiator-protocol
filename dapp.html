@@ -607,14 +607,13 @@
                             </div>
                             <div class="row mt-4">
                                 <div class="col">
-                                    <button v-if="this.staking.shareDaiLpStaking.address" v-on:click="stakeShareDaiLp"
+                                    <button v-on:click="stakeShareDaiLp"
                                         v-bind:disabled="isZero(this.balances.shareDaiLp)" type="button"
                                         class="mr-3 mb-2 btn btn-outline-success">Stake FDS-DAI-LP</button>
-                                    <button v-if="this.staking.shareDaiLpStaking.address" v-on:click="unstakeShareDaiLp"
+                                    <button v-on:click="unstakeShareDaiLp"
                                         v-bind:disabled="isZero(this.balances.stakedShareDaiLp)" type="button"
                                         class="mr-3 mb-2 btn btn-outline-success">Unstake FDS-DAI-LP</button>
-                                    <button v-if="this.staking.shareDaiLpStaking.address"
-                                        v-on:click="claimShareDaiLpReward"
+                                    <button v-on:click="claimShareDaiLpReward"
                                         v-bind:disabled="isZero(this.balances.unclaimedShareDaiLpReward)" type="button"
                                         class="mb-2 btn btn-outline-success"> Claim Profit</button>
                                 </div>
