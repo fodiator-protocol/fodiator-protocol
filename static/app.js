@@ -556,8 +556,12 @@ function initApp() {
                 this.tokens.cash.oraclePrice = await getCashOraclePrice(priceOracle, this.tokens.cashDaiLp, this.tokens.cash, this.tokens.dai);
                 // get status and quota:
                 console.log('query status & quota...');
-                this.controller.status = (await controller.status0())[0];
-                this.controller.quota = bn2number(await controller.quota());
+                let status0 = await controller.status0();
+                this.controller.status = status0[0];
+                this.controller.quota = bn2number(status0[1]);
+                let tmpQuota = await controller.quota();
+                console.log('quota from status0() = ' + this.controller.quota);
+                console.log('quota from quota()   = ' + bn2number(tmpQuota));
 
                 // update account balance:
                 this.balances.eth = await this.provider.getBalance(this.wallet.account);
@@ -568,10 +572,8 @@ function initApp() {
                 this.balances.shareDaiLp = await this.tokens.shareDaiLp.contract.balanceOf(this.wallet.account);
                 this.balances.stakedCashDaiLp = await this.staking.cashDaiLpStaking.contract.balanceOf(this.wallet.account);
                 this.balances.unclaimedCashDaiLpReward = await this.staking.cashDaiLpStaking.contract.earned(this.wallet.account);
-                if (this.staking.shareDaiLpStaking.contract) {
-                    this.balances.stakedShareDaiLp = await this.staking.shareDaiLpStaking.contract.balanceOf(this.wallet.account);
-                    this.balances.unclaimedShareDaiLpReward = await this.staking.shareDaiLpStaking.contract.earned(this.wallet.account);
-                }
+                this.balances.stakedShareDaiLp = await this.staking.shareDaiLpStaking.contract.balanceOf(this.wallet.account);
+                this.balances.unclaimedShareDaiLpReward = await this.staking.shareDaiLpStaking.contract.earned(this.wallet.account);
                 if (updateSlowerChange || isNaN(this.tokens.cash.totalSupply)) {
                     this.tokens.cash.totalSupply = await this.tokens.cash.contract.totalSupply();
                 }
@@ -580,7 +582,7 @@ function initApp() {
                 }
                 if (updateSlowerChange || isNaN(this.tokens.dai.reserves)) {
                     this.tokens.dai.reserves = await this.tokens.dai.contract.balanceOf(this.getContractAddress('Controller'));
-                    this.tokens.dai.investment = await this.loadContract('AAVEStrategy', this.getContractAddress('aaveStrategy')).balance(this.tokens.dai.address);
+                    this.tokens.dai.investment = await controller.getReserved();
                 }
                 if (updateSlowerChange || isNaN(this.tokens.cash.price)) {
                     let pt = await getPriceAndTvlByLP(this.tokens.cashDaiLp, this.tokens.dai, 'cash');
@@ -597,10 +599,8 @@ function initApp() {
                     this.tokens.share.holdByCashDaiLpStaking = await this.tokens.share.contract.balanceOf(this.staking.cashDaiLpStaking.address);
                 }
                 if (updateSlowerChange || isNaN(this.staking.shareDaiLpStaking.totalSupply)) {
-                    if (this.staking.shareDaiLpStaking.contract) {
-                        this.staking.shareDaiLpStaking.totalSupply = await this.staking.shareDaiLpStaking.contract.totalSupply();
-                        this.tokens.share.holdByShareDaiLpStaking = await this.tokens.share.contract.balanceOf(this.staking.shareDaiLpStaking.address);
-                    }
+                    this.staking.shareDaiLpStaking.totalSupply = await this.staking.shareDaiLpStaking.contract.totalSupply();
+                    this.tokens.share.holdByShareDaiLpStaking = await this.tokens.share.contract.balanceOf(this.staking.shareDaiLpStaking.address);
                 }
             },
             /**
@@ -831,12 +831,7 @@ function initApp() {
             this.tokens.cashDaiLp.contract = this.loadContract("IUniswapV2Pair", this.tokens.cashDaiLp.address);
             this.tokens.shareDaiLp.contract = this.loadContract('IUniswapV2Pair', this.tokens.shareDaiLp.address);
             this.staking.cashDaiLpStaking.contract = this.loadContract('StakingRewards', this.staking.cashDaiLpStaking.address);
-            if (this.staking.shareDaiLpStaking.address) {
-                this.staking.shareDaiLpStaking.contract = this.loadContract('StakingRewards', this.staking.shareDaiLpStaking.address);
-            } else {
-                this.staking.shareDaiLpStaking.address = null;
-                this.staking.shareDaiLpStaking.contract = null;
-            }
+            this.staking.shareDaiLpStaking.contract = this.loadContract('StakingRewards', this.staking.shareDaiLpStaking.address);
             if (this.wallet.installed) {
                 this.connectWallet();
             }
