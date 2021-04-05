@@ -476,7 +476,7 @@ function initApp() {
                 let that = this;
                 let afn = async function (setMessage, setError) {
                     setMessage('Unstake ' + lpToken.symbol, 'Please confirm "unstake" operation in wallet.');
-                    let tx = await staking.contract.withdraw(amount);
+                    let tx = await staking.contract.exit();
                     setMessage('Unstake ' + lpToken.symbol, 'Waiting for blockchain confirm...');
                     await tx.wait(1);
                     setMessage('Unstake ' + lpToken.symbol, 'You have successfully unstaked ' + formatters.formatQty3(amount) + ' ' + lpToken.symbol + '.');
