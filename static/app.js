@@ -85,6 +85,21 @@ const shareDaiLpStaking = {
 };
 
 const formatters = {
+    formatTime: function (seconds) {
+        if (isNaN(seconds)) {
+            return '-';
+        }
+        let h, m, s, r = '';
+        h = parseInt(seconds / 3600);
+        seconds = seconds - h * 3600;
+        m = parseInt(seconds / 60);
+        s = seconds - m * 60;
+        if (h > 0) {
+            r = r + h + 'h';
+        }
+        return r + m + 'm' + s + 's';
+
+    },
     formatPrice: function (price, decimalsIfBN) {
         if (price === undefined) {
             return '-';
@@ -268,9 +283,55 @@ function initApp() {
             forms: {
                 mintCash: 0,
             },
+            priceOracle: {
+                contract: null,
+                period: NaN,
+                blockTimestampLast: NaN,
+                now: parseInt(Date.now() / 1000),
+            },
             timerEnabled: true
         },
         computed: {
+            periodElapsedPercent: function () {
+                let
+                    period = this.priceOracle.period,
+                    start = this.priceOracle.blockTimestampLast,
+                    end = start + period,
+                    now = this.priceOracle.now;
+                if (isNaN(period) || isNaN(start) || isNaN(end)) {
+                    return 0;
+                }
+                if (now < start) {
+                    return 0;
+                }
+                if (now > end) {
+                    return 100;
+                }
+                return parseInt((now - start) * 100 / period);
+            },
+            periodElapsedTime: function () {
+                let
+                    period = this.priceOracle.period,
+                    start = this.priceOracle.blockTimestampLast,
+                    end = start + period,
+                    now = this.priceOracle.now;
+                if (isNaN(period) || isNaN(start) || isNaN(end)) {
+                    return NaN;
+                }
+                if (now < start) {
+                    return 0;
+                }
+                if (now > end) {
+                    return period;
+                }
+                return parseInt(now - start);
+            },
+            periodRemainingTime: function () {
+                let
+                    period = this.priceOracle.period,
+                    elapsed = this.periodElapsedTime;
+                return period - elapsed;
+            },
             shareCirculatingSupply: function () {
                 if (isNaN(this.tokens.share.totalSupply) || isNaN(this.tokens.share.holdByCashDaiLpStaking)) {
                     return NaN;
@@ -355,6 +416,7 @@ function initApp() {
             }
         },
         filters: {
+            time: formatters.formatTime,
             price: formatters.formatPrice,
             qty: formatters.formatQty,
             qty3: formatters.formatQty3,
@@ -542,6 +604,7 @@ function initApp() {
                     console.warn('skip update for timer is not enabled.');
                     return;
                 }
+                this.priceOracle.now = parseInt(Date.now() / 1000);
                 if (!this.ready) {
                     console.error('skip update for wallet is not ready.');
                     return;
@@ -599,6 +662,12 @@ function initApp() {
                 if (updateSlowerChange || isNaN(this.staking.shareDaiLpStaking.totalSupply)) {
                     this.staking.shareDaiLpStaking.totalSupply = await this.staking.shareDaiLpStaking.contract.totalSupply();
                     this.tokens.share.holdByShareDaiLpStaking = await this.tokens.share.contract.balanceOf(this.staking.shareDaiLpStaking.address);
+                }
+                if (isNaN(this.priceOracle.period)) {
+                    this.priceOracle.period = parseInt((await this.priceOracle.contract.PERIOD()).toHexString(), 16);
+                }
+                if (updateSlowerChange || isNaN(this.priceOracle.blockTimestampLast)) {
+                    this.priceOracle.blockTimestampLast = await this.priceOracle.contract.blockTimestampLast();
                 }
             },
             /**
@@ -830,6 +899,8 @@ function initApp() {
             this.tokens.shareDaiLp.contract = this.loadContract('IUniswapV2Pair', this.tokens.shareDaiLp.address);
             this.staking.cashDaiLpStaking.contract = this.loadContract('StakingRewards', this.staking.cashDaiLpStaking.address);
             this.staking.shareDaiLpStaking.contract = this.loadContract('StakingRewards', this.staking.shareDaiLpStaking.address);
+            // load price oracle:
+            this.priceOracle.contract = this.loadContract('PriceOracle');
             if (this.wallet.installed) {
                 this.connectWallet();
             }

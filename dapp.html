@@ -330,6 +330,13 @@
                     <div v-show="this.statusAboveWater" class="status-action">
                         <div class="card">
                             <div class="mt-4 ml-4 mr-4 mb-4">
+                                <div class="progress">
+                                    <div class="progress-bar progress-bar-striped progress-bar-animated bg-success"
+                                        role="progressbar" v-bind:style="{width: periodElapsedPercent + '%'}"></div>
+                                </div>
+                                <div class="text-right" style="font-size:0.8em"><span>{{ periodElapsedTime|time }}
+                                        elapsed /
+                                        {{ periodRemainingTime|time }} remaining</span></div>
                                 <h5 class="text-success">Fodiator Cash Mint Activated</h5>
                                 <p>Stake Cash to get Share, then mint Cash for profit!</p>
                                 <form>
