@@ -208,25 +208,9 @@ async function getPriceAndTvlByLP(lpToken, daiToken, anotherTokenName) {
 
 // get oracle price:
 async function getCashOraclePrice(priceOracleContract, cashDaiLpToken, cashToken, daiToken) {
-    await _detectXyzDaiLpPair(cashDaiLpToken, daiToken, 'cash');
-    let
-        lastPrice = await priceOracleContract.consult(cashToken.address, BN_1),
-        reserves = await cashDaiLpToken.contract.getReserves(),
-        price0CumLast = await cashDaiLpToken.contract.price0CumulativeLast(),
-        price1CumLast = await cashDaiLpToken.contract.price1CumulativeLast(),
-        reserve0 = reserves[0],
-        reserve1 = reserves[1],
-        timestamp = reserves[2];
-    console.log(lastPrice);
-    console.log(reserves);
-    if (cashDaiLpToken.token0 === 'cash') {
-        // 
-    } else {
-        //
-    }
-    let price = lastPrice;
-    console.log("fetched oracle price: " + bn2number(price) + " / BN = ", lastPrice);
-    return price;
+    let lastPrice = await priceOracleContract.consult(cashToken.address, BN_1);
+    console.log("fetched oracle price: " + bn2number(lastPrice) + " / BN = ", lastPrice);
+    return lastPrice;
 }
 
 function getWeb3Provider() {
