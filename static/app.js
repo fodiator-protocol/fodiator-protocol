@@ -604,7 +604,6 @@ function initApp() {
                     console.warn('skip update for timer is not enabled.');
                     return;
                 }
-                this.priceOracle.now = parseInt(Date.now() / 1000);
                 if (!this.ready) {
                     console.error('skip update for wallet is not ready.');
                     return;
@@ -904,6 +903,10 @@ function initApp() {
             if (this.wallet.installed) {
                 this.connectWallet();
             }
+            let updateProgress = () => {
+                this.priceOracle.now = parseInt(Date.now() / 1000);
+            };
+            setInterval(updateProgress, 1500);
         },
     });
 }
