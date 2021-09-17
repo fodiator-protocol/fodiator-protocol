@@ -30,6 +30,12 @@
     border-color: #e28327;
 }
 
+.btn-outline-warning:disabled {
+    color: #e28327 !important;
+    background-color: transparent;
+    border-color: #e28327;
+}
+
 .modal-header, .modal-footer {
     justify-content: center;
 }

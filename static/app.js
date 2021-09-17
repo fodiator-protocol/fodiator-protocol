@@ -208,7 +208,8 @@ async function getPriceAndTvlByLP(lpToken, daiToken, anotherTokenName) {
 
 // get oracle price:
 async function getCashOraclePrice(priceOracleContract, cashDaiLpToken, cashToken, daiToken) {
-    let lastPrice = await priceOracleContract.consult(cashToken.address, BN_1);
+    console.log('get cash oracle...');
+    let lastPrice = await priceOracleContract.consult(BN_1);
     console.log("fetched oracle price: " + bn2number(lastPrice) + " / BN = ", lastPrice);
     return lastPrice;
 }
@@ -266,6 +267,7 @@ function initApp() {
             // form operations:
             forms: {
                 mintCash: 0,
+                mintShare: 0,
             },
             priceOracle: {
                 contract: null,
@@ -446,6 +448,49 @@ function initApp() {
                         formatters.formatQty3(log.args[1]) + ' DAI and ' +
                         formatters.formatQty3(log.args[2]) + ' Share, and minted ' +
                         formatters.formatQty3(log.args[3]) + ' Cash.');
+                    return true;
+                };
+                this.invokeWallet(afn);
+            },
+            async mintShare() {
+                let
+                    that = this,
+                    controllerAddress = this.getContractAddress('Controller'),
+                    controllerContract = this.loadContract('Controller'),
+                    mintAmount = this.forms.mintShare,
+                    bnMintAmount = num2bn(mintAmount);
+                console.log('prepare mint ' + mintAmount + ' share...');
+                if (mintAmount <= 0) {
+                    return;
+                }
+                if (!this.ready) {
+                    this.showAlert('Wallet Not Ready', 'Please connect wallet to correct network first.');
+                    return;
+                }
+                let afn = async function (setMessage, setError) {
+                    setMessage('Prepare Burn Cash and Mint Share', 'Prepare burn cash and mint share...');
+                    let approvedCash = await that.tokens.cash.contract.allowance(that.wallet.account, controllerAddress);
+                    if (approvedCash.lt(bnMintAmount)) {
+                        setMessage('Approve Spent Cash', 'Please approve the fodiator.cash to spent your Cash in wallet.')
+                        let tx1 = await that.tokens.cash.contract.approve(controllerAddress, BN_MAX);
+                        setMessage('Approve Spent Cash', 'Waiting for blockchain confirm...');
+                        await tx1.wait(1);
+                    }
+                    setMessage('Burn Cash and Mint Share', 'Please confirm "mintShare" operation in wallet.');
+                    let fromBlock = await that.provider.getBlockNumber();
+                    console.log('will query from block ' + fromBlock + '...');
+                    console.log(bnMintAmount);
+                    let tx2 = await controllerContract.mintShare(bnMintAmount, parseInt(Date.now() / 1000 + 120));
+                    setMessage('Burn Cash and Mint Share', 'Waiting for blockchain confirm...');
+                    await tx2.wait(1);
+                    console.log(tx2);
+                    // query log:
+                    setMessage('Burn Cash and Mint Share', 'Query transaction logs...');
+                    let logs = await controllerContract.queryFilter(controllerContract.filters.mintShare, fromBlock, 'latest');
+                    let log = logs[0];
+                    setMessage('Burn Cash and Mint Share', 'You have successfully burned ' +
+                        formatters.formatQty3(log.args[1]) + ' Cash and minted ' +
+                        formatters.formatQty3(log.args[2]) + ' Share.');
                     return true;
                 };
                 this.invokeWallet(afn);
@@ -845,11 +890,10 @@ function initApp() {
                 afn.then(() => {
                     console.log("timer ok, set next...");
                     setTimeout(() => this._triggerTimer(), 30000);
-                })
-                    .catch((err) => {
-                        console.error(err);
-                        setTimeout(() => this._triggerTimer(), 30000);
-                    });
+                }).catch((err) => {
+                    console.error(err);
+                    setTimeout(() => this._triggerTimer(), 30000);
+                });
             },
             /**
              * Clear all balances of current account.

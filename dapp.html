@@ -28,7 +28,6 @@
         function initChainId() {
             let theNetworks = {
                 'mainnet': ['0x1', 'https://etherscan.io', 'Uniswap', 'https://app.uniswap.org'],
-                'rinkeby': ['0x4', 'https://rinkeby.etherscan.io', 'Uniswap', 'https://app.uniswap.org'],
                 'kovan': ['0x2a', 'https://kovan.etherscan.io', 'Uniswap', 'https://app.uniswap.org'],
             };
             let network = getParam('network', 'mainnet');
@@ -229,7 +228,7 @@
             <!-- introduction -->
             <div class="row mt-4 mb-4">
                 <div class="col">
-                    <h3>Fodiator.Cash is a Decentralized Stablecoin with an Algorithmic Central Contract on Ethereum
+                    <h3>Fodiator.Cash is a Decentralized Stablecoin with an Algorithmic Central Contract
                     </h3>
                     <p><a target="_blank" href="docs.html">Read the Docs</a></p>
                 </div>
@@ -390,23 +389,33 @@
                         <div class="card">
                             <div class="mt-4 ml-4 mr-4 mb-4">
                                 <h5 class="text-warning">Fodiator Cash Burn Activated</h5>
-                                <p>Burn 1 Cash and get 1 Share.</p>
+                                <p>Burn 1 Cash and mint 1 Share.</p>
                                 <form>
                                     <div class="form-row">
                                         <div class="col-auto">
-                                            <input type="number" class="form-control mb-2" style="width:120px;"
-                                                min="1" />
+                                            <input v-model.number="forms.mintShare" type="number"
+                                                class="form-control mb-2" min="0" v-bind:max="this.controller.quota"
+                                                style="width:120px;" value="0" />
                                         </div>
                                         <div class="col-auto">
-                                            <button class="btn btn-outline-warning">Burn Cash</button>
+                                            <button v-on:click="mintShare" v-bind:disabled="forms.mintShare<=0"
+                                                type="button" class="btn btn-outline-warning">Burn Cash and Mint
+                                                Share</button>
                                         </div>
+                                    </div>
+                                    <div class="form-row">
                                         <div class="col-auto">
-                                            <label class="col-form-label">and get ? Share</label>
+                                            <label class="col-form-label">You can burn
+                                                <span v-text="this.forms.mintShare"></span>
+                                                Cash and mint
+                                                <span v-text="this.forms.mintShare"></span>
+                                                Share. (<a v-text="this.controller.quota.toFixed(0)"
+                                                    v-on:click="forms.mintShare = controller.quota.toFixed(0)"
+                                                    href="#0"></a>
+                                                burnable cash during current cycle)</label>
                                         </div>
                                     </div>
                                 </form>
-                                <span style="font-size: 0.8em;">You have ? Cash and can burn <a href="#0">?</a>
-                                    FDC during the current cycle.</span>
                             </div>
                         </div>
                     </div>
